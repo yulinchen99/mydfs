@@ -1,0 +1,1 @@
+python mapreduce.py -mean ./dataset/newdata.csv 0
