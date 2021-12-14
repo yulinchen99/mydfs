@@ -153,12 +153,7 @@ class JobRunner:
             if response['status']:
                 self.job.task_complete(task_id)
                 self.job.task_result(task_id, response['result'])
-            # task = get_task(task_id)
-
-            "xxx"
-            "change complete status"
-            "save returned results"
-            # task.result = None
+            "TODO any other possible operations"
             return True
         except Exception as e:
             print(e)
