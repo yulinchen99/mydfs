@@ -16,3 +16,12 @@ host_list =   ['thumm01', 'thumm02', 'thumm03', 'thumm04', 'thumm05']#, 'thumm03
 name_node_host = "thumm01"
 
 BUF_SIZE = 40960
+
+main_host = "thumm01"
+
+# scheduler
+scheduler_port = 14299
+max_load = 1
+
+# job runner
+jobrunner_port = 14300

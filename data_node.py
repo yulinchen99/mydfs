@@ -25,6 +25,11 @@ rate = [8]
 # 3. rm 删除数据块
 # 4. format 删除所有数据块
 
+"""TODO 
+1. communication between datanodes
+2. task specific api
+"""
+
 class DataNode:
     def run(self):
         t = threading.Thread(target=self.heartbeat)
