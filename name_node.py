@@ -48,7 +48,7 @@ class NameNode:
                 try:
                     # 获取请求方发送的指令
                     request = str(sock_fd.recv(128), encoding='utf-8')
-                    request = request.split()  # 指令之间使用空白符分割
+                    request = request.split(' ')  # 指令之间使用空白符分割
                     
                     cmd = request[0]  # 指令第一个为指令类型
                     response = None
@@ -74,6 +74,10 @@ class NameNode:
                                 dfs_path = request[1]  # 指令第二个参数为DFS目标地址
                                 file_size = int(request[2])
                                 response = self.new_fat_item(dfs_path, file_size)
+                            elif cmd == "update_fat_item":  # 指令类型为更新FAT表项
+                                dfs_path = request[1]  # 指令第二个参数为DFS目标地址
+                                fat = request[2]
+                                self.update_fat_item(dfs_path, fat)
                             elif cmd == "rm_fat_item":  # 指令类型为删除FAT表项
                                 dfs_path = request[1]  # 指令第二个参数为DFS目标地址
                                 response = self.rm_fat_item(dfs_path)
@@ -277,6 +281,11 @@ class NameNode:
                 response = f.read()
         
         return response
+
+    def update_fat_item(self, dfs_path, fat):
+        with open(os.path.join(name_node_dir, dfs_path), 'w')as f:
+            f.writelines(fat)
+        return None
     
     def get_fat_item(self, dfs_path):
         # 获取FAT表内容

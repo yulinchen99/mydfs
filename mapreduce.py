@@ -143,7 +143,6 @@ class MapReduceClient(Client):
         return None
     
     def copyFromLocalByLine(self, local_path, dfs_path):
-
         def send_data(socket, data):
             data = bytes(data, encoding='utf-8')
             sent = 0
@@ -162,27 +161,27 @@ class MapReduceClient(Client):
         
         # 从NameNode获取一张FAT表
         self.name_node_sock.send(bytes(request, encoding='utf-8'))
-        print('request sent')
         fat_pd = self.name_node_sock.recv(BUF_SIZE)
         
         # 打印FAT表，并使用pandas读取
         fat_pd = str(fat_pd, encoding='utf-8')
         print("Fat: \n{}".format(fat_pd))
         fat = pd.read_csv(StringIO(fat_pd))
+
         
         # 根据FAT表逐个向目标DataNode发送数据块
         fp = open(local_path)
         blk_no = None
-        last_line = None
+        new_blk_size = []
         for idx, row in fat.iterrows():
             if blk_no is None or blk_no != row['blk_no']:
                 # data = fp.readlines()
                 data = fp.readlines(int(row['blk_size']))
                 data = ''.join(data)
-                # if last_line:
-                #     data = [last_line] + data
-                # last_line = data[]
-                # data 
+
+                datasize = len(bytes(data, encoding='utf-8'))
+            new_blk_size.append(datasize)
+
             blk_no = row['blk_no']
 
             data_node_sock = socket.socket()
@@ -198,10 +197,19 @@ class MapReduceClient(Client):
                     break
             
             send_data(data_node_sock, data)
-            # t = multiprocessing.Process(target=send_data, args=(data_node_sock, data, ))
-            # t.start()
+        
             
         fp.close()
+
+        # 更新fat表
+        name_node_sock = socket.socket()
+        name_node_sock.connect((name_node_host, name_node_port))
+        fat['blk_size'] = new_blk_size
+        request = "update_fat_item {} {}".format(dfs_path, fat.to_csv(index=False))
+        print("Request: {}".format(request))
+        time.sleep(0.1)
+        send_data(name_node_sock, request)
+        name_node_sock.close()
 
 
 if __name__ == '__main__':
