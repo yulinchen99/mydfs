@@ -1,49 +1,71 @@
-from asset import create_sock, deserialize_data, get_free_port, send_data, serialize_data
+# %%
+from abc import abstractmethod
+from collections import defaultdict
+from .asset import create_sock, deserialize_data, get_free_port, receive_data, send_data, serialize_data
 import socket
-from ..common import *
+import sys
+sys.path.append('../')
+from common import *
 import time
 import threading
 import pickle
 
 class Task:
-    def __init__(self, priority, preferred_datanode, cmd, port, task_id):
+    def __init__(self, preferred_datanode, cmd, port, task_id, data_path, field_name = None, priority = 0):
         self.priority = priority
         self.preferred_datanode = preferred_datanode
         self.cmd = cmd
+        self.data_path = data_path
         self.completed = False
-        self.result = None
+        self._result = None
         self.timestamp = time.time()
         self.port = port
         self.task_id = task_id
         self._task_cmd = None
+        self.field_name = field_name
 
     @property
     def task_cmd(self):
         if not self._task_cmd:
-            "TODO customize cmd for different task"
-            self._task_cmd = 'cmd'
+            self._task_cmd = ' '.join([self.cmd, self.data_path, str(self.field_name)])
         return self._task_cmd
+
+    @property
+    def result(self):
+        return self._result
+
+    @result.setter
+    def result(self, newres):
+        if self._result is not None:
+            print('more than one excecution for task {}'.format(self.task_id))
+        self._result = newres
+
+    # def __str__(self):
+    #     for attr in self.__getattribute__()
     
 
-class Job:
+class JobBase:
     r"""
     This is only applicable to Jobs that involve one map stage + one reduce stage
     """
-    def __init__(self, jobid, command, fat):
+    def __init__(self, jobid, fat, data_path, field_name = None):
         self.jobid = jobid
-        self.command = command
         self.fat = fat
-        self.completed = False
         self.completed_cnt = 0
-        self.tasks = self.populate_tasks()
+        self.port = None
+        self.data_path = data_path
+        self.field_name = field_name
     
     @property
     def completed(self):
         return self.completed_cnt == len(self.tasks)
 
     def populate_tasks(self):
-        "TODO populate map task list for different jobs"
-        pass
+        self.tasks = self._populate_tasks()
+    
+    @abstractmethod
+    def _populate_tasks(self):
+        raise NotImplementedError
 
     def task_complete(self, task_id):
         if not self.tasks[task_id].completed:
@@ -54,16 +76,33 @@ class Job:
         self.tasks[task_id].result = result
     
     def get_task_cmd(self, task_id):
-        return self.tasks[task_id].get_task_cmd()
+        return self.tasks[task_id].task_cmd
+
+    @abstractmethod
+    def reduce(self):
+        raise NotImplementedError
+
+class WordCountJob(JobBase):
+    def _populate_tasks(self):
+        tasks = {}
+        blk_nos = sorted(list(set(self.fat['blk_no'])))
+        for i, blk_no in enumerate(blk_nos):
+            preferred_node = list(self.fat[self.fat['blk_no'] == blk_no]['host_name'])
+            task = Task(preferred_node, 'wc', self.port, i, self.data_path + '.blk{}'.format(blk_no), field_name=self.field_name)
+            tasks[i] = task
+        return tasks
 
     def reduce(self):
-        "TODO customize reduce method for different jobs"
-        pass
+        wc_res = defaultdict(int)
+        for i in self.tasks:
+            res = self.tasks[i].result
+            for w in res:
+                wc_res[w] += res[w]
+        return wc_res
 
     
 class JobRunner:
-    def __init__(self, job: Job):
-        self.port = get_free_port()
+    def __init__(self, job: JobBase):
         self.job = job
         self.completed_cnt = 0
     
@@ -71,9 +110,9 @@ class JobRunner:
         listen_fd = socket.socket()
         try:
             # 监听端口
-            listen_fd.bind(("0.0.0.0", jobrunner_port))
+            print('jobrunner listening on ', self.port)
+            listen_fd.bind(("0.0.0.0", self.port))
             listen_fd.listen(5)
-            print("Scheduler started")
             while not self.completed:
                 # 等待连接，连接后返回通信用的套接字
                 sock_fd, addr = listen_fd.accept()
@@ -94,7 +133,7 @@ class JobRunner:
                 except Exception as e:  # 如果出错则打印错误信息
                     print(e)
                 finally:
-                    listen_fd.close()  # 释放连接
+                    sock_fd.close()  # 释放连接
         except KeyboardInterrupt:  # 如果运行时按Ctrl+C则退出程序
             pass
         except Exception as e:  # 如果出错则打印错误信息
@@ -103,60 +142,92 @@ class JobRunner:
             listen_fd.close()  # 释放连接
 
     def run(self):
-        scheduler_sock = create_sock(main_host, scheduler_port)
+        self.port = get_free_port()
+        self.job.port = self.port
+        self.job.populate_tasks()
+
+        # map stage
+        threads = []
+        t = threading.Thread(target=self.listen_for_scheduler_info)
+        threads.append(t)
+        # t = threading.Thread(target=self.check_job_status_loop)
+        # threads.append(t)
+        for t in threads:
+            t.start()
+        
+        # for t in threads:
+        #     t.join()
+        print('connecting to scheduler')
+        scheduler_sock = create_sock('0.0.0.0', scheduler_port)
         request = 'submit_job'
         scheduler_sock.send(bytes(request, encoding='utf-8'))
         while True:
             res = scheduler_sock.recv(BUF_SIZE)
             if str(res, encoding='utf-8') == 'ready':
                 break
-        scheduler_sock.close()
+        # scheduler_sock.close()
 
-        scheduler_sock = create_sock(main_host, scheduler_port)
+        # scheduler_sock = create_sock(main_host, scheduler_port)
         send_data(scheduler_sock, pickle.dumps(self.job)) # submit a list of map tasks
 
-        # map stage
-        threads = []
-        t = threading.Thread(target=self.listen_for_scheduler_info)
-        threads.append(t)
-        t = threading.Thread(target=self.check_job_status_loop)
-        threads.append(t)
-        for t in threads:
-            t.start()
-        
-        for t in threads:
-            t.join()
-        
-        # reduce stage
-        return self.job.reduce()
-        
+        while True:
+            if self.completed:
+                return self.job.reduce()
 
     @property    
     def completed(self):
         return self.job.completed
     
-    def check_job_status_loop(self):
-        while True:
-            time.sleep(1)
-            if self.completed:
-                return True
+    # def check_job_status_loop(self):
+        
+    #         if self.completed:
+    #             return True
 
     def launch_task(self, task_id, host):
-        try:
-            sock = create_sock(host, data_node_port)
-            # add host
-            request = self.job.get_task_cmd(task_id) + f' {host}'
-            sock.send(bytes(request, encoding='utf-8'))
-            response = sock.recv(BUF_SIZE)
-            sock.close()
-            response = deserialize_data(response) # json
-            if response['status']:
-                self.job.task_complete(task_id)
-                self.job.task_result(task_id, response['result'])
-            "TODO any other possible operations"
+        print('launch task')
+        # try:
+        print(host, data_node_port)
+        sock = create_sock(host, data_node_port)
+
+        prefer_nodes = self.job.tasks[task_id].preferred_datanode
+        node = host if host in prefer_nodes else prefer_nodes[0]
+        request = self.job.get_task_cmd(task_id) + ' {}'.format(node)
+        print('Request sent to datanode {}: {}'.format(host, request))
+        sock.send(bytes(request, encoding='utf-8'))
+        response = receive_data(sock)
+        response = deserialize_data(response) # json
+        sock.close()
+        # print('response:', response)
+        if response['status']:
+            print('request success')
+            self.job.task_complete(task_id)
+            self.job.task_result(task_id, response['result'])
             return True
-        except Exception as e:
-            print(e)
+        else:
+            print('[WARNING] response failed')
             return False
+            "TODO any other possible operations"
+            # return True
+        # except Exception as e:
+            # print(e)
+            # return False
 
 
+# # %%
+# import pandas as pd
+# fat = pd.read_csv('../dfs/name/dataset/newdata.csv')
+# job = WordCountJob(1, fat, './dataset/newdata.csv', field_name=2)
+# job.port = 12345
+# # %%
+# job.populate_tasks()
+# # %%
+# for i in job.tasks:
+#     print(i)
+#     print(job.tasks[i])
+#     print(job.tasks[i].task_cmd)
+#     break
+# # %%
+# job.tasks[0].__dict__
+# # %%
+
+# %%

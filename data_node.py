@@ -14,6 +14,8 @@ import numpy as np
 import pickle
 import multiprocessing
 
+from util.asset import count_word_dict, receive_data, send_data, serialize_data
+
 not_applicable = [0, 1, 5]
 word_count = [2, 4, 7]
 number = [3, 6]
@@ -78,12 +80,22 @@ class DataNode:
                         dfs_path = request[1]
                         field_name = request[2]
                         response = self.var(dfs_path, field_name)
+                    ######################## WordCountClient ##############################
+                    # json string + bytes are used for data transmission 
+                    elif cmd == "wc":
+                        dfs_path = request[1]
+                        field_name = request[2]
+                        host = request[3]
+                        response = self.wc(dfs_path, field_name, host)
+                        
+                    ########################################################################
                     else:
                         response = "Undefined command: " + " ".join(request)
                     if type(response) == str:
                         sock_fd.send(bytes(response, encoding='utf-8'))
                     elif response:
-                        sock_fd.send(response)
+                        # sock_fd.send(response)
+                        send_data(sock_fd, response)
                 except KeyboardInterrupt:
                     break
                 finally:
@@ -96,6 +108,46 @@ class DataNode:
             listen_fd.close()
         
         t.join()
+
+    ######################################## Word Count #################################################
+    def require_data(self, dfs_path, host):
+        print('requiring data')
+        sock = socket.socket()
+        sock.connect(host, data_node_port)
+        sock.send(bytes('load '+dfs_path, encoding='utf-8'))
+        res = receive_data(sock)
+        sock.close()
+        return res
+
+    @property
+    def this_host(self):
+        return socket.gethostname()
+
+    def wc(self, dfs_path, field_name, host):
+        field_name = int(field_name)
+        print('target host', host)
+        print('this host', self.this_host)
+        res = {'status':True, 'result':{}}
+        try:
+            if host == self.this_host:
+                data = self.load(dfs_path)
+            else:
+                data = self.require_data(dfs_path, host)
+            if not data:
+                res['result'] = {}
+            elif field_name in word_count:
+                data = pd.read_csv(StringIO(data), header=None)
+                s = ' '.join(list(data[field_name]))
+                res['result'] = count_word_dict(s)
+            else:
+                print('not applicable!')
+        except:
+            res['status'] = False
+        
+        return serialize_data(res)
+
+    #######################################################################################################
+
 
     def heartbeat(self):
         msg = 'heartbeat' + ' ' + socket.gethostname()
@@ -117,6 +169,7 @@ class DataNode:
             if not s:
                 return 0
             return len(s.split())
+
         def cal_rate(s):
             if not s:
                 return 0

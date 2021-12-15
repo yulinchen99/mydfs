@@ -4,15 +4,21 @@ This project implements naive distributed file system (DFS).
 ## TODO
 - [ ] QuincyScheduler
 - [ ] communication between datanodes
-- [ ] task specific api in data node and client
-- [ ] connect client to jobrunner (one client corresponds to one jobrunner, so directly make jobrunner an attribute of client would work?)
+    - [x] basics
+    - [ ] multi-processing problem (one datanode doing two jobs at the same time)
+- [x] task specific api in data node and client
+- [x] connect client to jobrunner (one client corresponds to one jobrunner, so directly make jobrunner an attribute of client would work?)
 - [ ] task specific operation in `util/job.py`
+    - [x] word count operation
 - [ ] metrics calculation (任务调度时间、实际数据处理时间、数据传输等)
+- [ ] multi-process problem (one datanode doing two jobs at the same time)
+    - [ ] datanode
+    - [ ] jobrunner
 
 ## Done
 - scheduler base class
 - job and task class in `util/job.py`
-- Random Scheduler
+- Random Scheduler (tested)
 - Queue Scehduler based on submitting time and data locality
 
 ## Scheduler Design

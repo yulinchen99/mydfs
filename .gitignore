@@ -149,3 +149,5 @@ dfs/*
 .idea
 .ipynb_checkpoints
 .DS*
+*.json
+*.csv

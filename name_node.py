@@ -8,6 +8,7 @@ import pandas as pd
 from common import *
 import time
 import threading
+from util.asset import *
 
 # NameNode功能
 # 1. 保存文件的块存放位置信息
@@ -47,6 +48,8 @@ class NameNode:
                 
                 try:
                     # 获取请求方发送的指令
+                    # request = receive_data(sock_fd)
+                    # request = str(request, encoding='utf-8')
                     request = str(sock_fd.recv(128), encoding='utf-8')
                     request = request.split(' ')  # 指令之间使用空白符分割
                     
@@ -76,8 +79,8 @@ class NameNode:
                                 response = self.new_fat_item(dfs_path, file_size)
                             elif cmd == "update_fat_item":  # 指令类型为更新FAT表项
                                 dfs_path = request[1]  # 指令第二个参数为DFS目标地址
-                                fat = request[2]
-                                self.update_fat_item(dfs_path, fat)
+                                # fat = request[2]
+                                self.update_fat_item(dfs_path, sock_fd)
                             elif cmd == "rm_fat_item":  # 指令类型为删除FAT表项
                                 dfs_path = request[1]  # 指令第二个参数为DFS目标地址
                                 response = self.rm_fat_item(dfs_path)
@@ -282,7 +285,14 @@ class NameNode:
         
         return response
 
-    def update_fat_item(self, dfs_path, fat):
+    def update_fat_item(self, dfs_path, sock_fd):
+        # sock_fd.send(bytes('ready', encoding='utf-8'))
+        sock_fd.send(bytes('ready', encoding='utf-8'))
+        # time.sleep(0.1)
+        data = receive_data(sock_fd)
+        print('fat recieved')
+        fat = str(data, encoding='utf-8')
+        print(fat)
         with open(os.path.join(name_node_dir, dfs_path), 'w')as f:
             f.writelines(fat)
         return None

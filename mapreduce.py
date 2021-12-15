@@ -205,10 +205,17 @@ class MapReduceClient(Client):
         name_node_sock = socket.socket()
         name_node_sock.connect((name_node_host, name_node_port))
         fat['blk_size'] = new_blk_size
-        request = "update_fat_item {} {}".format(dfs_path, fat.to_csv(index=False))
+        # fat_str = fat.to_csv(index=False)
+        request = "update_fat_item {}".format(dfs_path)
         print("Request: {}".format(request))
+        name_node_sock.send(bytes(request, encoding='utf-8'))
         time.sleep(0.1)
-        send_data(name_node_sock, request)
+        while True:
+            res = name_node_sock.recv(BUF_SIZE)
+            if res and str(res, encoding='utf-8') == 'ready':
+                break
+        print('send fat')
+        send_data(name_node_sock, fat.to_csv(index=False))
         name_node_sock.close()
 
 

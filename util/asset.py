@@ -1,14 +1,18 @@
 import socket 
+import sys
+sys.path.append('../')
 from common import *
 import pickle
 import json
+from collections import Counter
+from contextlib import closing
 
-def get_free_port():  
-    sock = socket.socket()
-    sock.bind(('', 0))
-    ip, port = sock.getnameinfo()
-    sock.close()
-    return port
+def get_free_port():
+    """ Get free port"""
+    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as s: 
+        s.bind(('', 0)) 
+        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1) 
+        return s.getsockname()[1] 
 
 def create_sock(host, port):
     sock = socket.socket()
@@ -42,3 +46,10 @@ def receive_data(sock):
             # either 0 or end of data
             break
     return chunk_data
+
+def count_word_dict(s):
+    s = s.lower()
+    if not s:
+        return 0
+    words = s.split()
+    return dict(Counter(words))
