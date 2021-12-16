@@ -124,7 +124,7 @@ class DataNode:
     def require_data(self, dfs_path, host):
         print('requiring data')
         sock = socket.socket()
-        sock.connect(host, data_node_port)
+        sock.connect((host, data_node_port))
         sock.send(bytes('load '+dfs_path, encoding='utf-8'))
         res = receive_data(sock)
         sock.close()

@@ -20,14 +20,15 @@ This project implements naive distributed file system (DFS).
 - [ ] communication between datanodes
     - [x] basics
     - [ ] multi-processing problem (one datanode doing two jobs at the same time)
+        - random scheduler 似乎会卡住（死锁？）
 - [x] task specific api in data node and client
 - [x] connect client to jobrunner (one client corresponds to one jobrunner, so directly make jobrunner an attribute of client would work?)
 - [ ] task specific operation in `util/job.py`
     - [x] word count operation
 - [ ] metrics calculation (任务调度时间、实际数据处理时间、数据传输等)
-- [ ] multi-process problem (one datanode doing two jobs at the same time)
-    - [ ] datanode
-    - [ ] jobrunner
+- [x] multi-process problem (one datanode doing two jobs at the same time)
+    - [x] datanode
+    - [x] jobrunner
 
 ### advanced
 - [ ] task/job priority
@@ -36,8 +37,8 @@ This project implements naive distributed file system (DFS).
 ## Done
 - scheduler base class
 - job and task class in `util/job.py`
-- Random Scheduler (tested)
-- Queue Scehduler based on submitting time and data locality
+- Random Scheduler
+- Queue Scehduler based on submitting time and data locality (tested)
 
 ## Scheduler Design
 ### data_node.py
