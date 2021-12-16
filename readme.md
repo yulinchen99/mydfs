@@ -15,6 +15,7 @@ This project implements naive distributed file system (DFS).
 
 
 ## TODO
+### basics
 - [ ] QuincyScheduler
 - [ ] communication between datanodes
     - [x] basics
@@ -27,6 +28,10 @@ This project implements naive distributed file system (DFS).
 - [ ] multi-process problem (one datanode doing two jobs at the same time)
     - [ ] datanode
     - [ ] jobrunner
+
+### advanced
+- [ ] task/job priority
+- [ ] ...
 
 ## Done
 - scheduler base class
@@ -50,7 +55,7 @@ This project implements naive distributed file system (DFS).
 #### Different Scheduler
 - RandomScheduler
     - 总是从pool中随机挑选一个task
-- SimpleQueueScheduler
+- DataLocalityScheduler
     - 总是perfer data locality，即如果datanode空闲也不一定会分配任务
 - QuincyScheduler
     - 一旦有空余就建图计算找到应当被分配的任务
@@ -69,6 +74,7 @@ cd dataset
 sh download.sh
 cd ..
 sh storedata.sh
+python scheduler.py # start scheduler, default datalocality scheduler
 python wordcount.py -wc ./dataset/newdata.csv 2
 # *python wordcount.py -wc <file_path> <column_id>*
 ```

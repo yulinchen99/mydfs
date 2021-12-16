@@ -151,3 +151,5 @@ dfs/*
 .DS*
 *.json
 *.csv
+dataset/*
+!dataset/download.sh
