@@ -1,6 +1,19 @@
 # MyDFS
 This project implements naive distributed file system (DFS).
 
+## The files concerned
+- util
+    - asset.py # util function
+    - job.py # job, jobrunner and task related
+- common.py # hyper-param
+- data_node.py # 标注了wordcount的部分代码
+- scheduler.py
+- wordcount.py # client entrance script
+- name_node.py
+
+*all other files should not be modified*
+
+
 ## TODO
 - [ ] QuincyScheduler
 - [ ] communication between datanodes
@@ -49,3 +62,13 @@ This project implements naive distributed file system (DFS).
 - jobrunner收到scheduler指令之后，跟对应datanode建立通信发送任务执行指令（此处需要多线程）
     - jobrunner向datanode发布任务，并接收结果（结果包括数据传输cost和实际数据处理结果）
 - scheduler负责计算时间（任务调度时间、实际数据处理时间）
+
+### Usage
+```sh
+cd dataset
+sh download.sh
+cd ..
+sh storedata.sh
+python wordcount.py -wc ./dataset/newdata.csv 2
+# *python wordcount.py -wc <file_path> <column_id>*
+```
