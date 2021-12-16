@@ -15,15 +15,17 @@ import time
 import threading
 import random
 from collections import defaultdict
+import multiprocessing
 
 
 class SchedulerBase:
     # the base class for scheduler
     def __init__(self):
-        self.task_pool = []
+        # self.task_pool = []
         self.job_pool = []
         self.task2port = {}
         self.task2job = {}
+        self.task2status = {}
         self.job2transmissioncost = defaultdict(float) # data transmission between datanodes cost
         self.job2schedulecost = defaultdict(float) # time cost on scheduling
         self.job2processcost = defaultdict(float) # actual process time on data node
@@ -32,6 +34,11 @@ class SchedulerBase:
         self.datanode_port = data_node_port
         self.max_load = max_load
         self._pushing = False
+    
+    @property
+    def task_pool(self):
+        return [task for task in self.task2status if not self.task2status[task]]
+
 
     def listen_for_client(self):
         listen_fd = socket.socket()
@@ -75,19 +82,24 @@ class SchedulerBase:
             if not self._pushing:
                 break
         task = self.find_next_task(host)
+        self.task2status[task] = True
         if task:
             port = task.port
             # port = self.task2port[task]
             sock = create_sock(main_host, port)
             sock.send(bytes('{} {}'.format(task.task_id, host), encoding='utf-8'))
-
-            data = receive_data(sock)
+            data = sock.recv(BUF_SIZE * 2)
             data = deserialize_data(data)
             sock.close()
             "TODO record cost"
             if not data:
-                self.task_pool.append(task)
+                print('task failed')
+                self.task2status[task] = False
+
         self.datanode_load[host] -= 1
+        # print('task left:', len(self.task_pool))
+        # print('free host:', len(self.free_data_node))
+        return
 
     
     def _run(self):
@@ -101,11 +113,13 @@ class SchedulerBase:
                         self.datanode_load[host] += 1
                         # self._run_task(host)
                         # print('one task completed')
-                        # print('task left:', len(self.task_pool))
-                        # print('free host:', len(self.free_data_node))
-                        t = threading.Thread(target = self._run_task, args=(host,))
+                        m = threading.Thread(target=self._run_task, args=(host,))
+                        m.daemon = True
+                        m.start()
+                        
+                        # t = threading.Thread(target = self._run_task, args=(host,))
                         # threads.append(t)
-                        t.start()
+                        # t.start()
                         # time.sleep(0.1)
                 # for t in threads:
                 #     t.join()
@@ -137,22 +151,23 @@ class SchedulerBase:
     def push_task(self, tasks: List[Task], job):
         self._pushing = True
         # add task to pool
-        self.task_pool += tasks
+        # self.task_pool += tasks
         # record task2port and task2jobhash and jobhashlist
         self.job_pool.append(job)
         for task in tasks:
         #     self.task2port[task] = job.port 
             self.task2job[task] = hash(job)
+            self.task2status[task] = False
         self._pushing = False
 
     def submit_job(self, sock_fd):
-        print('submit job request')
+        # print('submit job request')
         sock_fd.send(bytes('ready', encoding='utf-8'))
-        print('receiving jobs')
+        # print('receiving jobs')
         data = receive_data(sock_fd)
         job = pickle.loads(data)
         tasks = list(job.tasks.values())
-        print('pushing jobs')
+        # print('pushing jobs')
         self.push_task(tasks, job)
         return None
 
@@ -160,7 +175,6 @@ class SchedulerBase:
 class RandomScheduler(SchedulerBase):
     def find_next_task(self, host):
         task = random.choice(self.task_pool)
-        self.task_pool.remove(task)
         return task
     
     # def find_next_task(self, host):
@@ -170,10 +184,22 @@ class RandomScheduler(SchedulerBase):
     #             return task
 
 class DataLocalityScheduler(SchedulerBase):
+    def push_task(self, tasks: List[Task], job):
+        self._pushing = True
+        # add task to pool
+        # self.task_pool += tasks
+        # record task2port and task2jobhash and jobhashlist
+        self.job_pool.append(job)
+        for task in tasks:
+        #     self.task2port[task] = job.port 
+            self.task2job[task] = hash(job)
+            self.task2status[task] = False
+            # self.node2tasks = {}
+        self._pushing = False
+
     def find_next_task(self, host):
         for task in self.task_pool:
             if host in task.preferred_datanode:
-                self.task_pool.remove(task)
                 return task
 
 if __name__ == '__main__':

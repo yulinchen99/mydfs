@@ -216,7 +216,7 @@ class MapReduceClient(Client):
                 break
         print('send fat')
         send_data(name_node_sock, fat.to_csv(index=False))
-        name_node_sock.close()
+        # name_node_sock.close()
 
 
 if __name__ == '__main__':

@@ -52,6 +52,7 @@ class WordCountClient(Client):
         job = WordCountJob(0, fat, dfs_path, field_name=field_name)
         jobrunner = JobRunner(job)
         result = jobrunner.run()
+        print('job done. result received')
         # print(result)
         return result
 # %%
@@ -84,3 +85,4 @@ if __name__ == '__main__':
         # print(result)
         with open('wc-result.json', 'w')as f:
             f.writelines(json.dumps(result, ensure_ascii=False))
+        print('result saved')

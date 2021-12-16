@@ -9,6 +9,7 @@ from common import *
 import time
 import threading
 import pickle
+import multiprocessing
 
 class Task:
     def __init__(self, preferred_datanode, cmd, port, task_id, data_path, field_name = None, priority = 0):
@@ -122,18 +123,21 @@ class JobRunner:
                     request = request.split(' ')
                     task_id = int(request[0])
                     task_node = request[1]
-                    res = self.launch_task(task_id, task_node)
+                    m = threading.Thread(target=self.launch_task, args=(task_id, task_node, sock_fd))
+                    m.daemon = True  # daemon True设置为守护即主死子死.
+                    m.start()
+                    # res = self.launch_task(task_id, task_node)
 
-                    response = serialize_data(res)
+                    # response = serialize_data(res)
 
-                    sock_fd.send(response)
+                    # sock_fd.send(response)
 
                 except KeyboardInterrupt:  # 如果运行时按Ctrl+C则退出程序
                     pass
                 except Exception as e:  # 如果出错则打印错误信息
                     print(e)
-                finally:
-                    sock_fd.close()  # 释放连接
+                # finally:
+                    # sock_fd.close()  # 释放连接
         except KeyboardInterrupt:  # 如果运行时按Ctrl+C则退出程序
             pass
         except Exception as e:  # 如果出错则打印错误信息
@@ -183,10 +187,7 @@ class JobRunner:
     #         if self.completed:
     #             return True
 
-    def launch_task(self, task_id, host):
-        print('launch task')
-        # try:
-        print(host, data_node_port)
+    def launch_task(self, task_id, host, sock_fd):
         sock = create_sock(host, data_node_port)
 
         prefer_nodes = self.job.tasks[task_id].preferred_datanode
@@ -202,15 +203,13 @@ class JobRunner:
             print('request success')
             self.job.task_complete(task_id)
             self.job.task_result(task_id, response['result'])
-            return True
+            res = True
         else:
-            print('[WARNING] response failed')
-            return False
+            print('[WARNING] request failed')
+            print(response['error'])
+            res = False
             "TODO any other possible operations"
-            # return True
-        # except Exception as e:
-            # print(e)
-            # return False
+        send_data(sock_fd, serialize_data(res))
 
 
 # # %%

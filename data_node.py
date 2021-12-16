@@ -58,7 +58,26 @@ class DataNode:
                     response = None
                     if cmd == "load":  # 加载数据块
                         dfs_path = request[1]  # 指令第二个参数为DFS目标地址
-                        response = self.load(dfs_path)
+                        # response = self.load(dfs_path)
+                        m = threading.Thread(target=self.load_multi, args=(dfs_path, sock_fd))
+                        m.daemon = True  # daemon True设置为守护即主死子死.
+                        m.start()
+
+                    ######################## WordCountClient ##############################
+                    # json string + bytes are used for data transmission 
+                    elif cmd == "wc":
+                        dfs_path = request[1]
+                        field_name = request[2]
+                        host = request[3]
+                        # self.wc(dfs_path, field_name, host, sock_fd)
+                        t = threading.Thread(target=self.wc, args=(dfs_path, field_name, host, sock_fd))
+                        # m = multiprocessing.Process(target=self.wc, args=(dfs_path, field_name, host, sock_fd))
+                        t.daemon = True  # daemon True设置为守护即主死子死.
+                        t.start()
+                        
+                    ########################################################################
+                    
+
                     elif cmd == "checksum":  # 加载数据块
                         dfs_path = request[1]  # 指令第二个参数为DFS目标地址
                         response = self.checksum(dfs_path)
@@ -80,26 +99,18 @@ class DataNode:
                         dfs_path = request[1]
                         field_name = request[2]
                         response = self.var(dfs_path, field_name)
-                    ######################## WordCountClient ##############################
-                    # json string + bytes are used for data transmission 
-                    elif cmd == "wc":
-                        dfs_path = request[1]
-                        field_name = request[2]
-                        host = request[3]
-                        response = self.wc(dfs_path, field_name, host)
-                        
-                    ########################################################################
                     else:
                         response = "Undefined command: " + " ".join(request)
-                    if type(response) == str:
-                        sock_fd.send(bytes(response, encoding='utf-8'))
-                    elif response:
-                        # sock_fd.send(response)
-                        send_data(sock_fd, response)
+                        print(response)
+                    # if type(response) == str:
+                    #     sock_fd.send(bytes(response, encoding='utf-8'))
+                    # elif response:
+                    #     # sock_fd.send(response)
+                    #     send_data(sock_fd, response)
                 except KeyboardInterrupt:
                     break
-                finally:
-                    sock_fd.close()
+                # finally:
+                #     sock_fd.close()
         except KeyboardInterrupt:
             pass
         except Exception as e:
@@ -123,11 +134,9 @@ class DataNode:
     def this_host(self):
         return socket.gethostname()
 
-    def wc(self, dfs_path, field_name, host):
+    def wc(self, dfs_path, field_name, host, sock_fd):
         field_name = int(field_name)
-        print('target host', host)
-        print('this host', self.this_host)
-        res = {'status':True, 'result':{}}
+        res = {'status':True, 'result':{}, 'error': ''}
         try:
             if host == self.this_host:
                 data = self.load(dfs_path)
@@ -141,10 +150,14 @@ class DataNode:
                 res['result'] = count_word_dict(s)
             else:
                 print('not applicable!')
-        except:
+        except Exception as e:
+            res['error'] = str(e)
             res['status'] = False
-        
-        return serialize_data(res)
+        send_data(sock_fd, serialize_data(res))
+        print('success: {}, data sent'.format(res['status']))
+        # print(sock_fd)
+        # time.sleep(0.1)
+        # sock_fd.close()
 
     #######################################################################################################
 
@@ -236,6 +249,11 @@ class DataNode:
             res = None
         return pickle.dumps(res)
 
+    def load_multi(self, dfs_path, sock_fd):
+        data = self.load(dfs_path)
+        send_data(sock_fd, data)
+        # sock_fd.close()
+
 
     def load(self, dfs_path):
         # 本地路径
@@ -244,6 +262,7 @@ class DataNode:
         with open(local_path) as f:
             chunk_data = f.read()
         return chunk_data
+        # send_data(sock_fd, chunk_data)
     
     def checksum(self, dfs_path):
         # 本地路径

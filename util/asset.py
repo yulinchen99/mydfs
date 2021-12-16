@@ -42,6 +42,7 @@ def receive_data(sock):
     while True:
         part = sock.recv(BUF_SIZE * 2)
         chunk_data += part
+        # if len(part) == 0 and len(chunk_data) > 0:
         if len(part) == 0:
             # either 0 or end of data
             break
