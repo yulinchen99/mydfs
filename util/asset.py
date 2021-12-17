@@ -19,16 +19,19 @@ def create_sock(host, port):
     sock.connect((host, port))
     return sock
 
-def send_data(socket, data):
+def send_data(socket, data, close=True):
     # data = bytes(json.dumps(data), encoding='utf-8')
     try:
         sent = 0
         while sent < len(data):
             sent_part = socket.send(data[sent:sent+BUF_SIZE])
             sent += sent_part
-        socket.close()
+        if close:
+            socket.close()
         return True
     except:
+        if close:
+            socket.close()
         return False
 
 def deserialize_data(data):
@@ -42,8 +45,8 @@ def receive_data(sock):
     while True:
         part = sock.recv(BUF_SIZE * 2)
         chunk_data += part
-        # if len(part) == 0 and len(chunk_data) > 0:
-        if len(part) == 0:
+        if len(part) == 0 and len(chunk_data) > 0:
+        # if len(part) == 0:
             # either 0 or end of data
             break
     return chunk_data
