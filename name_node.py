@@ -22,8 +22,8 @@ class NameNode:
     def run(self):  # 启动NameNode
         self.init()
         threads = []
-        t = threading.Thread(target=self.check_host_status_loop)
-        threads.append(t)
+        # t = threading.Thread(target=self.check_host_status_loop)
+        # threads.append(t)
         t = threading.Thread(target=self.listen_for_heartbeat)
         threads.append(t)
         t = threading.Thread(target=self.main_loop)
@@ -108,9 +108,15 @@ class NameNode:
     
     def init(self):
         "initialize necessary data for heartbeat and host status"
-        self.host_status_dict = {host:False for host in host_list}
+        # self.host_status_dict = {host:False for host in host_list}
+        self.host_status_dict = {host:True for host in host_list}
+
         self.heartbeat_dict = {host:None for host in host_list}
-        self.initial_check = False # whether the first check has been performed
+        # self.initial_check = False # whether the first check has been performed
+        self.initial_check = True # whether the first check has been performed
+
+        self.on_check_host_status = False
+
     
     # ############################# heartbeat ###################################
     def receive_heartbeat(self, hostname):
