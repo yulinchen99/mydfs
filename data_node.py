@@ -83,9 +83,9 @@ class DataNode:
                         response = self.checksum(dfs_path)
                     elif cmd == "store":  # 存储数据块
                         dfs_path = request[1]  # 指令第二个参数为DFS目标地址
-                        response = self.store(sock_fd, dfs_path)
-                        # t = multiprocessing.Process(target=self.store, args=(sock_fd, dfs_path, ))
-                        # t.start()
+                        t = threading.Thread(target = self.store, args=(sock_fd, dfs_path,))
+                        t.daemon = True
+                        t.start()
                     elif cmd == "rm":  # 删除数据块
                         dfs_path = request[1]  # 指令第二个参数为DFS目标地址
                         response = self.rm(dfs_path)

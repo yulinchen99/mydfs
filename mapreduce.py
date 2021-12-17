@@ -25,7 +25,8 @@ from client import Client
 import pickle # use pickle dumps and loads to transform a data structure to bytes
 import math
 import random
-import multiprocessing
+import threading
+from util.asset import *
 
 not_applicable = [0, 1, 5]
 
@@ -143,15 +144,33 @@ class MapReduceClient(Client):
         return None
     
     def copyFromLocalByLine(self, local_path, dfs_path):
-        def send_data(socket, data):
-            data = bytes(data, encoding='utf-8')
-            sent = 0
-            while sent < len(data):
-                sent_part = socket.send(data[sent:sent+BUF_SIZE])
-                sent += sent_part
-                # print('sent size:', sent_part)
-            socket.close()
-            return
+        # 更新fat表
+        def update_fat(fat, new_blk_size):
+            name_node_sock = socket.socket()
+            name_node_sock.connect((name_node_host, name_node_port))
+            fat['blk_size'] = new_blk_size
+            # fat_str = fat.to_csv(index=False)
+            request = "update_fat_item {}".format(dfs_path)
+            print("Request: {}".format(request))
+            name_node_sock.send(bytes(request, encoding='utf-8'))
+            while True:
+                res = name_node_sock.recv(BUF_SIZE)
+                if res and str(res, encoding='utf-8') == 'ready':
+                    break
+            send_data(name_node_sock, bytes(fat.to_csv(index=False), encoding='utf-8'))
+            print('fat sent')
+            print(fat.head())
+
+        def store_data(sock, blk_path, data):
+            request = "store {}".format(blk_path)
+            sock.send(bytes(request, encoding='utf-8'))
+            # time.sleep(1.0)  # 两次传输需要间隔一s段时间，避免粘包
+            while True:
+                res = sock.recv(BUF_SIZE)
+                if res and str(res, encoding='utf-8') == 'ready':
+                    break
+            
+            send_data(sock, bytes(data, encoding='utf-8'))
 
         file_size = os.path.getsize(local_path)
         print("File size: {}".format(file_size))
@@ -170,9 +189,11 @@ class MapReduceClient(Client):
 
         
         # 根据FAT表逐个向目标DataNode发送数据块
+        print('storing data...')
         fp = open(local_path)
         blk_no = None
         new_blk_size = []
+        threads = []
         for idx, row in fat.iterrows():
             if blk_no is None or blk_no != row['blk_no']:
                 # data = fp.readlines()
@@ -187,35 +208,24 @@ class MapReduceClient(Client):
             data_node_sock = socket.socket()
             data_node_sock.connect((row['host_name'], data_node_port))
             blk_path = dfs_path + ".blk{}".format(row['blk_no'])
-            
-            request = "store {}".format(blk_path)
-            data_node_sock.send(bytes(request, encoding='utf-8'))
-            # time.sleep(1.0)  # 两次传输需要间隔一s段时间，避免粘包
-            while True:
-                res = data_node_sock.recv(BUF_SIZE)
-                if res and str(res, encoding='utf-8') == 'ready':
-                    break
-            
-            send_data(data_node_sock, data)
+
+            t = threading.Thread(target=store_data, args=(data_node_sock, blk_path, data, ))
+            t.daemon = True
+            t.start()  
+            threads.append(t)          
         
             
         fp.close()
 
-        # 更新fat表
-        name_node_sock = socket.socket()
-        name_node_sock.connect((name_node_host, name_node_port))
-        fat['blk_size'] = new_blk_size
-        # fat_str = fat.to_csv(index=False)
-        request = "update_fat_item {}".format(dfs_path)
-        print("Request: {}".format(request))
-        name_node_sock.send(bytes(request, encoding='utf-8'))
-        time.sleep(0.1)
-        while True:
-            res = name_node_sock.recv(BUF_SIZE)
-            if res and str(res, encoding='utf-8') == 'ready':
-                break
-        print('send fat')
-        send_data(name_node_sock, fat.to_csv(index=False))
+        
+
+        t = threading.Thread(target=update_fat, args=(fat, new_blk_size))
+        t.daemon = True
+        t.start()  
+
+        for t in threads:
+            t.join()
+        print('done')
         # name_node_sock.close()
 
 
