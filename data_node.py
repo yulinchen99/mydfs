@@ -90,7 +90,7 @@ class DataNode:
                         dfs_path = request[1]  # 指令第二个参数为DFS目标地址
                         response = self.rm(dfs_path)
                     elif cmd == "format":  # 格式化DFS
-                        response = self.format()
+                        response = self.format(sock_fd)
                     elif cmd == "mean":
                         dfs_path = request[1]
                         field_name = request[2]
@@ -316,11 +316,11 @@ class DataNode:
         
         return "Remove chunk {} successfully~".format(local_path)
     
-    def format(self):
+    def format(self, sock):
         format_command = "rm -rf {}/*".format(data_node_dir)
         os.system(format_command)
         
-        return "Format datanode successfully~"
+        send_data(sock, bytes("Format datanode successfully~", encoding='utf-8'))
 
 
 # 创建DataNode对象并启动
