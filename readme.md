@@ -17,10 +17,9 @@ This project implements naive distributed file system (DFS).
 ## TODO
 ### basics
 - [ ] QuincyScheduler
-- [ ] communication between datanodes
+- [x] communication between datanodes
     - [x] basics
-    - [ ] multi-processing problem (one datanode doing two jobs at the same time)
-        - random scheduler 似乎会卡住（死锁？）
+    - [x] multi-processing problem (one datanode doing two jobs at the same time)
 - [x] task specific api in data node and client
 - [x] connect client to jobrunner (one client corresponds to one jobrunner, so directly make jobrunner an attribute of client would work?)
 - [ ] task specific operation in `util/job.py`
@@ -29,6 +28,9 @@ This project implements naive distributed file system (DFS).
 - [x] multi-process problem (one datanode doing two jobs at the same time)
     - [x] datanode
     - [x] jobrunner
+- [ ] multi-client, multi-jobs
+    - [x] basics (runnable)
+    - [ ] scheduler-related (set max tasks runners for each job dynamically)
 
 ### advanced
 - [ ] task/job priority
