@@ -107,7 +107,7 @@ class SchedulerBase:
         while True:
             free_host = self.free_data_node
             if self.task_pool and free_host:
-                # self.infer()
+                self.infer(free_host)
                 # threads = []
                 for host in free_host:
                     if self.task_pool:
@@ -233,19 +233,14 @@ class QuincyScheduler(SchedulerBase):
             for j in range(len_free_host):
                 self.mincostflow.add_edge(i+1, j+len_tasks+1, 1, self.cal_cost(tasks[i], free_host[j]))
         self.mincostflow.infer()
-        self.mincostflow.print()
+        # self.mincostflow.print()
 
     def find_next_task(self, host):
-        # free_host = self.free_data_node
-        # print(free_host)
-        # if host not in free_host:
-        #     free_host.append(host)
-        # self.infer(free_host)
         # print(self.mincostflow.find_next_task(host).task_cmd)
-        # return self.mincostflow.find_next_task(host)
-        for task in self.task_pool:
-            if host in task.preferred_datanode:
-                return task
+        return self.mincostflow.find_next_task(host)
+        # for task in self.task_pool:
+        #     if host in task.preferred_datanode:
+        #         return task
 
 if __name__ == '__main__':
     scheduler = QuincyScheduler()
