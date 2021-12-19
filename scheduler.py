@@ -38,7 +38,8 @@ class SchedulerBase:
     
     @property
     def task_pool(self):
-        return [task for task in self.task2status if not self.task2status[task]]
+        temp_dict = self.task2status.copy()
+        return [task for task in temp_dict if not temp_dict[task]]
 
 
     def listen_for_client(self):
