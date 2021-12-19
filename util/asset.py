@@ -29,7 +29,8 @@ def send_data(socket, data, close=True):
         if close:
             socket.close()
         return True
-    except:
+    except Exception as e:
+        print(e)
         if close:
             socket.close()
         return False

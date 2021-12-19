@@ -72,6 +72,7 @@ class JobBase:
         if not self.tasks[task_id].completed:
             self.tasks[task_id].completed = True
             self.completed_cnt += 1
+        print('current completed task number:{}, remained task number: {}'.format(self.completed_cnt, len(self.tasks)-self.completed_cnt))
     
     def task_result(self, task_id, result):
         self.tasks[task_id].result = result
@@ -88,12 +89,14 @@ class WordCountJob(JobBase):
         tasks = {}
         blk_nos = sorted(list(set(self.fat['blk_no'])))
         for i, blk_no in enumerate(blk_nos):
-            preferred_node = list(self.fat[self.fat['blk_no'] == blk_no]['host_name'])
-            task = Task(preferred_node, 'wc', self.port, i, self.data_path + '.blk{}'.format(blk_no), field_name=self.field_name)
-            tasks[i] = task
+            if list(self.fat[self.fat['blk_no'] == blk_no]['blk_size'])[0]: # skip empty data
+                preferred_node = list(self.fat[self.fat['blk_no'] == blk_no]['host_name'])
+                task = Task(preferred_node, 'wc', self.port, i, self.data_path + '.blk{}'.format(blk_no), field_name=self.field_name)
+                tasks[i] = task
         return tasks
 
     def reduce(self):
+        print('start reducing')
         wc_res = defaultdict(int)
         for i in self.tasks:
             res = self.tasks[i].result

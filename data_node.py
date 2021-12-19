@@ -127,8 +127,9 @@ class DataNode:
         sock.connect((host, data_node_port))
         sock.send(bytes('load '+dfs_path, encoding='utf-8'))
         res = receive_data(sock)
+        print('data received')
         sock.close()
-        return res
+        return str(res, encoding='utf-8')
 
     @property
     def this_host(self):
@@ -251,7 +252,12 @@ class DataNode:
 
     def load_multi(self, dfs_path, sock_fd):
         data = self.load(dfs_path)
-        send_data(sock_fd, data)
+        print('start sending data')
+        sent = send_data(sock_fd, bytes(data, encoding='utf-8'))
+        if sent:
+            print('required data sent')
+        else:
+            print('error when sending data')
         # sock_fd.close()
 
 
