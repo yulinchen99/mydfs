@@ -98,7 +98,9 @@ cd dataset
 sh download.sh
 cd ..
 sh storedata.sh
-python scheduler.py # start scheduler, default datalocality scheduler
+python scheduler.py Quincy 1.0 1.0 1.0
+#python scheduler.py Random
+#python scheduler.py DataLocality
 python wordcount.py -wc ./dataset/newdata.csv 2
 # *python wordcount.py -wc <file_path> <column_id>*
 ```
