@@ -111,7 +111,7 @@ class SchedulerBase:
             free_host = self.free_data_node
             if self.task_pool and free_host:
                 start_time = time.time()
-                self.infer(free_host)
+                # self.infer(free_host)
                 infer_time = time.time()-start_time
                 # threads = []
                 for host in free_host:
@@ -215,33 +215,37 @@ class QuincyScheduler(SchedulerBase):
 
     def cal_cost(self, task, host):
         if host in task.preferred_datanode:
-            return 2
-        else:
             return 1
+        else:
+            return 2
 
     def infer(self, free_host):
+        hosts = [host for host in self.datanode_load]
         self.mincostflow.init()
-        self.mincostflow.set_free_host(free_host)
+        self.mincostflow.set_free_host(hosts)
         tasks = self.task_pool
         self.mincostflow.set_tasks(tasks)
         len_tasks = len(tasks)
-        len_free_host = len(free_host)
+        len_hosts = len(hosts)
         self.mincostflow.set_supply(len_tasks)
         for i in range(len_tasks):
             self.mincostflow.add_edge(0, i+1, 1, 0)
             self.mincostflow.set_supply(0)
-        for i in range(len_free_host):
+        for i in range(len_hosts):
             self.mincostflow.set_supply(0)
-            self.mincostflow.add_edge(i+len_tasks+1, len_free_host+len_tasks+1, 999, 0)
+            self.mincostflow.add_edge(i+len_tasks+1, len_hosts+len_tasks+1, 999, 0)
+            if hosts[i] == free_host:
+                self.mincostflow.add_edge(i + len_tasks + 1, len_hosts + len_tasks + 1, 1, -99999)
         self.mincostflow.set_supply(-1*len_tasks)
         for i in range(len_tasks):
-            for j in range(len_free_host):
+            for j in range(len_hosts):
                 self.mincostflow.add_edge(i+1, j+len_tasks+1, 1, self.cal_cost(tasks[i], free_host[j]))
         self.mincostflow.infer()
         # self.mincostflow.print()
 
     def find_next_task(self, host):
         # print(self.mincostflow.find_next_task(host).task_cmd)
+        self.infer(host)
         return self.mincostflow.find_next_task(host)
         # for task in self.task_pool:
         #     if host in task.preferred_datanode:
