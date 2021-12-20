@@ -1,6 +1,17 @@
 # MyDFS
 This project implements naive distributed file system (DFS).
 
+## Experimental settings
+- 数据存储
+- 手动通信时间
+- 手动加大节点负载？
+
+### Quincy Scheduler Cost 计算
+- 负载情况
+- 通信时间
+- 数据是否在本地
+
+
 ## The files concerned
 - util
     - asset.py # util function
