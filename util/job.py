@@ -96,7 +96,8 @@ class WordCountJob(JobBase):
         for i, blk_no in enumerate(blk_nos):
             if list(self.fat[self.fat['blk_no'] == blk_no]['blk_size'])[0]: # skip empty data
                 preferred_node = list(self.fat[self.fat['blk_no'] == blk_no]['host_name'])
-                task = Task(preferred_node, 'wc', self.port, i, self.data_path + '.blk{}'.format(blk_no), field_name=self.field_name)
+                task = Task(preferred_node, 'wc', self.port, i, self.data_path + '.blk{}'.format(blk_no),
+                            field_name=self.field_name, blk_size=list(self.fat[self.fat['blk_no'] == blk_no]['blk_size'])[0])
                 tasks[i] = task
         return tasks
 

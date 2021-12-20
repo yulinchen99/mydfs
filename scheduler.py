@@ -79,7 +79,7 @@ class SchedulerBase:
     def free_data_node(self):
         return [host for host in self.datanode_load if self.datanode_load[host] < self.max_load]
 
-    def _run_task(self, host, infer_time):
+    def _run_task(self, host):
         while True:
             if not self._pushing:
                 break
@@ -110,16 +110,14 @@ class SchedulerBase:
         while True:
             free_host = self.free_data_node
             if self.task_pool and free_host:
-                start_time = time.time()
                 # self.infer(free_host)
-                infer_time = time.time()-start_time
                 # threads = []
                 for host in free_host:
                     if self.task_pool:
                         self.datanode_load[host] += 1
                         # self._run_task(host)
                         # print('one task completed')
-                        m = threading.Thread(target=self._run_task, args=(host, infer_time))
+                        m = threading.Thread(target=self._run_task, args=(host,))
                         m.daemon = True
                         m.start()
                         
@@ -138,6 +136,9 @@ class SchedulerBase:
         t = threading.Thread(target=self.listen_for_client)
         threads.append(t)
 
+        t = threading.Thread(target=self.update_status)
+        threads.append(t)
+
         for t in threads:
             t.start()
 
@@ -151,6 +152,9 @@ class SchedulerBase:
         raise NotImplementedError
     
     def infer(self, free_host):
+        pass
+
+    def update_status(self):
         pass
                 
 
@@ -217,21 +221,48 @@ class QuincyScheduler(SchedulerBase):
     def __init__(self, alpha: float, beta: float, gamma: float):
         super(QuincyScheduler, self).__init__()
         self.mincostflow = MinCostFlow()
-        self.alpha = float(alpha)
-        self.beta = float(beta)
-        self.gamma = float(gamma)
+        self.alpha = float(alpha)/40960000/1.5
+        self.beta = float(beta)/40960000
+        self.gamma = float(gamma)/0.016
         self.transmissioncost = {}
         self.load = {}
         for host in self.datanode_load:
             self.transmissioncost[host] = 1.0
             self.load[host] = 1.0
 
+    def update_status(self):
+        msg = 'status'
+        while True:
+            try:
+                for host in host_list:
+                    sock = socket.socket()
+                    sock.connect((host, data_node_port))
+                    time_start = time.time()
+                    sock.send(bytes(msg, encoding='utf-8'))
+                    response = deserialize_data(sock.recv(BUF_SIZE))
+                    time_end = time.time()
+                    self.load[host] = response['load']
+                    self.transmissioncost[host] = time_end - time_start
+                    # print(self.load[host])
+                    # print(self.transmissioncost[host])
+                time.sleep(30)
+            except KeyboardInterrupt:
+                pass
+            except Exception as e:
+                print(e)
+            finally:
+                sock.close()
+
+
     def cal_cost(self, task, host):
         cost_process = task.size*self.load[host]
         if host in task.preferred_datanode:
             cost_transmission = 0.0
         else:
-            cost_transmission = 1.0
+            cost_transmission = task.size
+        # print("cost_process:{}".format(self.alpha*cost_process))
+        # print("cost_transmission:{}".format(self.beta*cost_transmission))
+        # print("transmissioncost:{}".format(self.gamma*self.transmissioncost[host]))
         return self.alpha*cost_process + self.beta*cost_transmission + self.gamma*self.transmissioncost[host]
 
     def infer(self, free_host):
