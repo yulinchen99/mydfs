@@ -209,15 +209,30 @@ class DataLocalityScheduler(SchedulerBase):
                 return task
 
 class QuincyScheduler(SchedulerBase):
-    def __init__(self):
+    # TODO:三部分cost的计算
+    # cost_process:任务耗时，为wc数据集的size乘host的拥塞程度
+    # cost_transmission：数据传输耗时，若数据不在该host如何计算
+    # self.transmissioncost[host]：通信耗时，Scheduler与host的通信耗时
+
+    def __init__(self, alpha: float, beta: float, gamma: float):
         super(QuincyScheduler, self).__init__()
         self.mincostflow = MinCostFlow()
+        self.alpha = float(alpha)
+        self.beta = float(beta)
+        self.gamma = float(gamma)
+        self.transmissioncost = {}
+        self.load = {}
+        for host in self.datanode_load:
+            self.transmissioncost[host] = 1.0
+            self.load[host] = 1.0
 
     def cal_cost(self, task, host):
+        cost_process = task.size*self.load[host]
         if host in task.preferred_datanode:
-            return 1
+            cost_transmission = 0.0
         else:
-            return 2
+            cost_transmission = 1.0
+        return self.alpha*cost_process + self.beta*cost_transmission + self.gamma*self.transmissioncost[host]
 
     def infer(self, free_host):
         hosts = [host for host in self.datanode_load]
@@ -235,11 +250,11 @@ class QuincyScheduler(SchedulerBase):
             self.mincostflow.set_supply(0)
             self.mincostflow.add_edge(i+len_tasks+1, len_hosts+len_tasks+1, 999, 0)
             if hosts[i] == free_host:
-                self.mincostflow.add_edge(i + len_tasks + 1, len_hosts + len_tasks + 1, 1, -99999)
+                self.mincostflow.add_edge(i + len_tasks + 1, len_hosts + len_tasks + 1, 1, -9999999999)
         self.mincostflow.set_supply(-1*len_tasks)
         for i in range(len_tasks):
             for j in range(len_hosts):
-                self.mincostflow.add_edge(i+1, j+len_tasks+1, 1, self.cal_cost(tasks[i], free_host[j]))
+                self.mincostflow.add_edge(i+1, j+len_tasks+1, 1, int(self.cal_cost(tasks[i], hosts[j])))
         self.mincostflow.infer()
         # self.mincostflow.print()
 
@@ -252,13 +267,20 @@ class QuincyScheduler(SchedulerBase):
         #         return task
 
 if __name__ == '__main__':
-    scheduler = QuincyScheduler()
-    # scheduler = DataLocalityScheduler()
-    # print('using random scheduler')
-    # scheduler = RandomScheduler()
-    scheduler.run()
+    import sys
 
-"""
-TODO
-QuincyScheduler
-"""
+    argv = sys.argv
+    argc = len(argv) - 1
+    cmd = argv[1]
+    if cmd == 'Quincy':
+        if argc ==4:
+            scheduler = QuincyScheduler(argv[2], argv[3], argv[4])
+        else:
+            print("Usage: python client.py -Quincy alpha beta gamma")
+    elif cmd == 'Random':
+        scheduler = RandomScheduler()
+    elif cmd == 'DataLocality':
+        scheduler = DataLocalityScheduler()
+    else:
+        print("Undefined command: {}".format(cmd))
+    scheduler.run()

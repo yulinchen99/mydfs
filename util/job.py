@@ -12,7 +12,7 @@ import pickle
 import multiprocessing
 
 class Task:
-    def __init__(self, preferred_datanode, cmd, port, task_id, data_path, field_name = None, priority = 0):
+    def __init__(self, preferred_datanode, cmd, port, task_id, data_path, field_name = None, priority = 0, blk_size = 1.0):
         self.priority = priority
         self.preferred_datanode = preferred_datanode
         self.cmd = cmd
@@ -24,12 +24,17 @@ class Task:
         self.task_id = task_id
         self._task_cmd = None
         self.field_name = field_name
+        self.blk_size = blk_size
 
     @property
     def task_cmd(self):
         if not self._task_cmd:
             self._task_cmd = ' '.join([self.cmd, self.data_path, str(self.field_name)])
         return self._task_cmd
+
+    @property
+    def size(self):
+        return self.blk_size
 
     @property
     def result(self):
