@@ -79,17 +79,19 @@ class SchedulerBase:
     def free_data_node(self):
         return [host for host in self.datanode_load if self.datanode_load[host] < self.max_load]
 
-    def _run_task(self, host):
+    def _run_task(self, host, infer_time):
         while True:
             if not self._pushing:
                 break
+        start_time = time.time()
         task = self.find_next_task(host)
         self.task2status[task] = True
+        scheduler_time = time.time()-start_time + infer_time
         if task:
             port = task.port
             # port = self.task2port[task]
             sock = create_sock(main_host, port)
-            sock.send(bytes('{} {}'.format(task.task_id, host), encoding='utf-8'))
+            sock.send(bytes('{} {} {}'.format(task.task_id, host, str(scheduler_time)), encoding='utf-8'))
             data = sock.recv(BUF_SIZE * 2)
             data = deserialize_data(data)
             sock.close()
@@ -108,14 +110,16 @@ class SchedulerBase:
         while True:
             free_host = self.free_data_node
             if self.task_pool and free_host:
+                start_time = time.time()
                 self.infer(free_host)
+                infer_time = time.time()-start_time
                 # threads = []
                 for host in free_host:
                     if self.task_pool:
                         self.datanode_load[host] += 1
                         # self._run_task(host)
                         # print('one task completed')
-                        m = threading.Thread(target=self._run_task, args=(host,))
+                        m = threading.Thread(target=self._run_task, args=(host, infer_time))
                         m.daemon = True
                         m.start()
                         

@@ -24,7 +24,17 @@ This project implements naive distributed file system (DFS).
 - [x] connect client to jobrunner (one client corresponds to one jobrunner, so directly make jobrunner an attribute of client would work?)
 - [ ] task specific operation in `util/job.py`
     - [x] word count operation
-- [ ] metrics calculation (任务调度时间、实际数据处理时间、数据传输等)
+- [x] metrics calculation (任务调度时间、实际数据处理时间、数据传输等)
+  - [x] data_node:
+    - [x] wc: get transmit_time & data_process_time
+  - [x] scheduler:
+    - [x] _run_task: get scheduler_time
+    - [x] _run: get infer_time
+  - [x] JobRunner:
+    - [x] init: define metrics;
+    - [x] run: report result when completed;
+    - [x] listen_for_scheduler_info: get the sum of scheduler_time;
+    - [x] launch_task: get the sum of transmit_time & data_process_time
 - [x] multi-process problem (one datanode doing two jobs at the same time)
     - [x] datanode
     - [x] jobrunner

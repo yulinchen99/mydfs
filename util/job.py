@@ -109,6 +109,11 @@ class JobRunner:
     def __init__(self, job: JobBase):
         self.job = job
         self.completed_cnt = 0
+        # 4 metrics
+        self.begin_time = time.time()
+        self.data_process_time_sum_dict = {host:0 for host in host_list}
+        self.transmit_time_sum_dcit = {host:0 for host in host_list}
+        self.scheduler_time_sum = 0
     
     def listen_for_scheduler_info(self):
         listen_fd = socket.socket()
@@ -126,6 +131,7 @@ class JobRunner:
                     request = request.split(' ')
                     task_id = int(request[0])
                     task_node = request[1]
+                    self.scheduler_time_sum += float(request[2])
                     m = threading.Thread(target=self.launch_task, args=(task_id, task_node, sock_fd))
                     m.daemon = True  # daemon True设置为守护即主死子死.
                     m.start()
@@ -179,6 +185,10 @@ class JobRunner:
 
         while True:
             if self.completed:
+                print("transmit_time_sum_dcit: {}".format(self.transmit_time_sum_dcit))
+                print("data_process_time_sum_dict: {}".format(self.data_process_time_sum_dict))
+                print("scheduler_time_sum: {}".format(self.scheduler_time_sum))
+                print("run_time: {}".format(time.time() - self.begin_time))
                 return self.job.reduce()
 
     @property    
@@ -206,6 +216,8 @@ class JobRunner:
             print('request success')
             self.job.task_complete(task_id)
             self.job.task_result(task_id, response['result'])
+            self.data_process_time_sum_dict[host] += float(response['data_process_time'])
+            self.transmit_time_sum_dcit[host] += float(response['transmit_time'])
             res = True
         else:
             print('[WARNING] request failed')

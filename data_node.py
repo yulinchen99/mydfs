@@ -136,13 +136,18 @@ class DataNode:
         return socket.gethostname()
 
     def wc(self, dfs_path, field_name, host, sock_fd):
+        transmit_time = 0
+        data_process_time = 0
         field_name = int(field_name)
-        res = {'status':True, 'result':{}, 'error': ''}
+        res = {'status':True, 'result':{}, 'error': '', 'transmit_time':'', 'data_process_time':''}
         try:
             if host == self.this_host:
                 data = self.load(dfs_path)
             else:
+                start_time = time.time()
                 data = self.require_data(dfs_path, host)
+                transmit_time = time.time()-start_time
+            start_time = time.time()
             if not data:
                 res['result'] = {}
             elif field_name in word_count:
@@ -151,6 +156,10 @@ class DataNode:
                 res['result'] = count_word_dict(s)
             else:
                 print('not applicable!')
+            data_process_time = time.time() - start_time
+            print("data_process_time == {}".format(data_process_time))
+            res['transmit_time'] = str(transmit_time)
+            res['data_process_time'] = str(data_process_time)
         except Exception as e:
             res['error'] = str(e)
             res['status'] = False
