@@ -35,6 +35,7 @@ class SchedulerBase:
         self.datanode_port = data_node_port
         self.max_load = max_load
         self._pushing = False
+        self._task_pool = []
     
     @property
     def task_pool(self):
@@ -86,7 +87,7 @@ class SchedulerBase:
         start_time = time.time()
         task = self.find_next_task(host)
         self.task2status[task] = True
-        scheduler_time = time.time()-start_time + infer_time
+        scheduler_time = time.time()-start_time
         if task:
             port = task.port
             # port = self.task2port[task]
@@ -160,6 +161,7 @@ class SchedulerBase:
 
     def push_task(self, tasks: List[Task], job):
         self._pushing = True
+        self._task_pool += tasks
         # add task to pool
         # self.task_pool += tasks
         # record task2port and task2jobhash and jobhashlist
@@ -192,6 +194,14 @@ class RandomScheduler(SchedulerBase):
     #         if host not in task.preferred_datanode:
     #             self.task_pool.remove(task)
     #             return task
+
+class QueueScheduler(SchedulerBase):
+    def find_next_task(self, host):
+        return self._task_pool.pop(0)
+    
+    @property
+    def task_pool(self):
+        return self._task_pool
 
 class DataLocalityScheduler(SchedulerBase):
     def push_task(self, tasks: List[Task], job):
@@ -312,6 +322,8 @@ if __name__ == '__main__':
         scheduler = RandomScheduler()
     elif cmd == 'DataLocality':
         scheduler = DataLocalityScheduler()
+    elif cmd == 'Queue':
+        scheduler = QueueScheduler()
     else:
         print("Undefined command: {}".format(cmd))
     scheduler.run()
