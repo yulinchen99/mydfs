@@ -74,6 +74,11 @@ class DataNode:
                         # m = multiprocessing.Process(target=self.wc, args=(dfs_path, field_name, host, sock_fd))
                         t.daemon = True  # daemon True设置为守护即主死子死.
                         t.start()
+                    
+                    elif cmd == 'status':
+                        t = threading.Thread(target=self.status, args=(sock_fd,))
+                        t.daemon = True
+                        t.start()
                         
                     ########################################################################
                     
@@ -168,6 +173,14 @@ class DataNode:
         # print(sock_fd)
         # time.sleep(0.1)
         # sock_fd.close()
+
+    def status(self, sock):
+        data = {}
+        load = os.popen('uptime | cut -c 41-')
+        for line in load.readlines():
+            load = line.split(':')[1].split(',')[0]
+            data['load'] = float(load)
+        send_data(sock, serialize_data(data))
 
     #######################################################################################################
 
