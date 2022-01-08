@@ -24,4 +24,5 @@ scheduler_port = 15299
 max_load = 1
 
 # job runner
-jobrunner_port = 15300
+# datanode delay
+delay = {'thumm01': 0.0, 'thumm02': 1.0, 'thumm03': 2.0, 'thumm04': 3.0, 'thumm05': 4.0}

@@ -34,6 +34,7 @@ rate = [8]
 
 class DataNode:
     def run(self):
+        self.hostname = socket.gethostname()
         t = threading.Thread(target=self.heartbeat)
         t.start()    
 
@@ -56,6 +57,7 @@ class DataNode:
                     
                     cmd = request[0]  # 指令第一个为指令类型
                     response = None
+                    time.sleep(delay[self.hostname])
                     if cmd == "load":  # 加载数据块
                         dfs_path = request[1]  # 指令第二个参数为DFS目标地址
                         # response = self.load(dfs_path)

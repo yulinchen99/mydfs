@@ -28,6 +28,7 @@ import math
 import random
 import multiprocessing
 from util.job import JobRunner, WordCountJob, Task
+import numpy as np
 
 applicable = [2, 4, 7]
 
@@ -64,8 +65,7 @@ if __name__ == '__main__':
     argv = sys.argv
     argc = len(argv) - 1
 
-    client = WordCountClient()
-    result = None
+    result = []
 
     cmd = argv[1]
     if cmd == '-wc':
@@ -75,14 +75,30 @@ if __name__ == '__main__':
             if field_name not in applicable:
                 print('--wc is not applicable on field_id {}'.format(field_name))
             else:
-                result = client.wordcount(dfs_path, field_name)
+                for i in range(5):
+                    print('Test {}'.format(i))
+                    client = WordCountClient()
+                    output, res = client.wordcount(dfs_path, field_name)
+                    result.append(res)
+                    client.__del__()
         else:
             print("Usage: python client.py -wc <dfs_path> <field_id>")
     else:
         print("Undefined command: {}".format(cmd))
         print("Usage: python client.py -wc other_arguments")
     if result:
+        keys = list(result[0].keys())
+        final_res = {k:[] for k in keys}
+        for k in final_res:
+            for res in result:
+                final_res[k].append(res[k])
+        # print(final_res)
+        for k in final_res:
+            final_res[k] = (np.mean(final_res[k]), np.std(final_res[k]))
+        
+        print(final_res)
+
         # print(result)
-        with open('wc-result.json', 'w')as f:
-            f.writelines(json.dumps(result, ensure_ascii=False))
-        print('result saved')
+        # with open('wc-result.json', 'w')as f:
+        #     f.writelines(json.dumps(result, ensure_ascii=False))
+        # print('result saved')

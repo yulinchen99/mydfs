@@ -143,7 +143,7 @@ class MapReduceClient(Client):
                 error_host.append(host)
         return None
     
-    def copyFromLocalByLine(self, local_path, dfs_path):
+    def copyFromLocalByLine(self, local_path, dfs_path, unbalanced=False):
         # 更新fat表
         def update_fat(fat, new_blk_size):
             name_node_sock = socket.socket()
@@ -175,7 +175,7 @@ class MapReduceClient(Client):
         file_size = os.path.getsize(local_path)
         print("File size: {}".format(file_size))
 
-        request = "new_fat_item {} {}".format(dfs_path, file_size)
+        request = "new_fat_item {} {}".format(dfs_path, int(file_size)) # increase size to make sure all data can be stored
         print("Request: {}".format(request))
         
         # 从NameNode获取一张FAT表
@@ -196,7 +196,6 @@ class MapReduceClient(Client):
         threads = []
         for idx, row in fat.iterrows():
             if blk_no is None or blk_no != row['blk_no']:
-                # data = fp.readlines()
                 data = fp.readlines(int(row['blk_size']))
                 data = ''.join(data)
 
@@ -264,7 +263,7 @@ if __name__ == '__main__':
         if argc == 3:
             local_path = argv[2]
             dfs_path = argv[3]
-            client.copyFromLocalByLine(local_path, dfs_path)
+            client.copyFromLocalByLine(local_path, dfs_path, unbalanced=False)
         else:
             print("Usage: python client.py -copyFromLocal <local_path> <dfs_path>")
     else:

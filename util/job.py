@@ -10,6 +10,7 @@ import time
 import threading
 import pickle
 import multiprocessing
+import numpy as np
 
 class Task:
     def __init__(self, preferred_datanode, cmd, port, task_id, data_path, field_name = None, priority = 0, blk_size = 1.0):
@@ -191,11 +192,12 @@ class JobRunner:
 
         while True:
             if self.completed:
-                print("transmit_time_sum_dcit: {}".format(self.transmit_time_sum_dcit))
-                print("data_process_time_sum_dict: {}".format(self.data_process_time_sum_dict))
-                print("scheduler_time_sum: {}".format(self.scheduler_time_sum))
-                print("run_time: {}".format(time.time() - self.begin_time))
-                return self.job.reduce()
+                # print("transmit_time_sum_dcit: {}".format(self.transmit_time_sum_dcit))
+                # print("data_process_time_sum_dict: {}".format(self.data_process_time_sum_dict))
+                # print("scheduler_time_sum: {}".format(self.scheduler_time_sum))
+                # print("run_time: {}".format(time.time() - self.begin_time))
+                res = {'run_time': time.time() - self.begin_time, 'scheduler_time': self.scheduler_time_sum, 'data_process_time': np.sum(list(self.data_process_time_sum_dict.values())), 'transmission_time': np.sum(list(self.transmit_time_sum_dcit.values()))}
+                return self.job.reduce(), res
 
     @property    
     def completed(self):
